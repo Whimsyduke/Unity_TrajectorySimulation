@@ -121,10 +121,10 @@ namespace Trajctory
         public AnimationCurve VelocityOrTimeSpend = DefaultVelocity;
 
         /// <summary>
-        /// 轴高度曲线
+        /// 半径曲线
         /// </summary>
-        [Tooltip("投射物偏离发射点到目标点的直线垂直距离，若投射物所在的极坐标平面垂直于此直线，且直线经过坐标原点，那么配置数据X轴代表时间，Y轴代表投射物在坐标平面上的点到极坐标平面原点的距离r")]
-        public AnimationCurve Height = DefaultHeight;
+        [Tooltip("投射物偏离发射点到目标点的直线垂直距离，若投射物所在的极坐标平面垂直于此直线，且直线经过坐标原点，那么配置数据X轴代表时间，Y轴代表投射物在坐标平面上的点到极坐标平面原点的半径r")]
+        public AnimationCurve Radius;
 
         /// <summary>
         /// 轨迹旋转曲线

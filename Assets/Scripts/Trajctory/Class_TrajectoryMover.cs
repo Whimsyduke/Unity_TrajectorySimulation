@@ -59,10 +59,10 @@ namespace Trajctory
         public AnimationCurve VelocityOrTimeSpend;
 
         /// <summary>
-        /// 轴高度曲线
+        /// 半径曲线
         /// </summary>
-        [Tooltip("投射物偏离发射点到目标点的直线垂直距离，若投射物所在的极坐标平面垂直于此直线，且直线经过坐标原点，那么配置数据X轴代表时间，Y轴代表投射物在坐标平面上的点到极坐标平面原点的距离r")]
-        public AnimationCurve Height;
+        [Tooltip("投射物偏离发射点到目标点的直线垂直距离，若投射物所在的极坐标平面垂直于此直线，且直线经过坐标原点，那么配置数据X轴代表时间，Y轴代表投射物在坐标平面上的点到极坐标平面原点的半径r")]
+        public AnimationCurve Radius;
 
         /// <summary>
         /// 轨迹旋转曲线
@@ -118,6 +118,11 @@ namespace Trajctory
         /// </summary>
         public event Action<Class_TrajectoryMover> EventOnHit;
 
+        /// <summary>
+        /// 移动事件事件，参数分别为移动器，原投影位置，原投射物位置，新投影位置，新投射物位置
+        /// </summary>
+        public event Action<Class_TrajectoryMover, Vector3 , Vector3, Vector3, Vector3> EventOnMove;
+
         #endregion 事件
 
         #endregion 属性字段
@@ -155,7 +160,7 @@ namespace Trajctory
             {
                 VelocityOrTimeSpend = simulator.VelocityOrTimeSpend;
             }
-            Height = simulator.Height != null ? simulator.Height : Class_TrajectoryCreator.DefaultHeight;
+            Radius = simulator.Radius != null ? simulator.Radius : Class_TrajectoryCreator.DefaultHeight;
             TrackRotation = simulator.TrackRotation != null ? simulator.TrackRotation : Class_TrajectoryCreator.DefaultTrackRotation;
             ProjectileRotation = simulator.ProjectileRotation != null ? simulator.ProjectileRotation : Class_TrajectoryCreator.DefaultProjectileRotation;
             ImpaceEffect = simulator.ImpaceEffect;
@@ -166,48 +171,112 @@ namespace Trajctory
             EventOnDestroy += simulator.OnMoverDesotroy;
         }
 
+        #region 移动
+
         /// <summary>
         /// 速度确定移动
         /// </summary>
-        protected void Move_Velocity()
+        /// <param name="time">移动时间</param>
+        /// <param name="originalPos">投影点坐标</param>
+        /// <param name="targetPos">目标点坐标</param>
+        /// <returns>命中</returns>
+        protected bool Move_Velocity(float time, ref Vector3 originalPos, Vector3 targetPos)
         {
-            float speedVal = VelocityOrTimeSpend.Evaluate(Time.fixedTime - mCreateTime);
-            Vector3 targetPos = TargetObject.transform.position;
+            float speedVal = VelocityOrTimeSpend.Evaluate(time);
             Vector3 velocity = (targetPos - LaunchPos).normalized * speedVal;
-            if ((targetPos - mOriginalPos).sqrMagnitude <= velocity.sqrMagnitude)
+            if ((targetPos - originalPos).sqrMagnitude <= velocity.sqrMagnitude)
             {
-                EventOnHit?.Invoke(this);
+                return true;
             }
             else
             {
-                mOriginalPos = mOriginalPos + velocity;
+                originalPos = originalPos + velocity;
+                return false;
             }
         }
 
         /// <summary>
         /// 耗时确定移动
         /// </summary>
-        protected void Move_SpentTime()
+        /// <param name="time">移动时间</param>
+        /// <param name="originalPos">投影点坐标</param>
+        /// <param name="targetPos">目标点坐标</param>
+        /// <returns>命中</returns>
+        protected bool Move_SpentTime(float time, ref Vector3 originalPos, Vector3 targetPos)
         {
-            float posVal = VelocityOrTimeSpend.Evaluate(Time.fixedTime - mCreateTime);
+            float posVal = VelocityOrTimeSpend.Evaluate(time);
             if (posVal > 1)
             {
-                EventOnHit?.Invoke(this);
+                return true;
             }
             else
             {
-                Vector3 targetPos = TargetObject.transform.position;
-                mOriginalPos = LaunchPos * posVal + targetPos * (1 - posVal);
+                originalPos = Vector3.Lerp(LaunchPos, targetPos, posVal);
+                return false;
             }
         }
 
         /// <summary>
         /// 刷新投射物位置
         /// </summary>
-        protected void Move_UpdateProjectile()
+        /// <param name="time">移动时间</param>
+        /// <param name="projectilePos">投射物坐标</param>
+        /// <param name="targetPos">目标点坐标</param>
+        protected void Move_UpdateProjectile(float time, ref Vector3 projectilePos, Vector3 targetPos)
         {
-
+            Vector3 polarAxis = -Vector3.Cross((targetPos - LaunchPos), Vector3.up).normalized;
+            float angle = TrackRotation.Evaluate(time);
+            float radius = Radius.Evaluate(time);
+            Quaternion rotation = Quaternion.Euler((float)Math.Cos(angle), (float)Math.Sin(angle), 0);
+            Vector3 direction = (rotation * polarAxis).normalized;
+            projectilePos += direction * radius;
         }
+
+        /// <summary>
+        /// 投射物移动
+        /// </summary>
+        /// <param name="time">移动时间</param>
+        /// <param name="originalPos">投影点坐标</param>
+        /// <param name="projectilePos">投射物坐标</param>
+        /// <param name="targetPos">目标点坐标</param>
+        protected void Move(float time, ref Vector3 originalPos, ref Vector3 projectilePos, Vector3 targetPos)
+        {
+            Vector3 preOrigin = originalPos;
+            Vector3 prePos = projectilePos;
+            bool hit;
+            switch (MoveType)
+            {
+                case EnumTrajectoryMoveType.Velocity:
+                    hit = Move_Velocity(time, ref originalPos, targetPos);
+                    break;
+                case EnumTrajectoryMoveType.SpentTime:
+                    hit = Move_SpentTime(time, ref originalPos, targetPos);
+                    break;
+                default:
+                    throw new Exception();
+            }
+            if (hit)
+            {
+                EventOnHit?.Invoke(this);
+                return;
+            }
+            Move_UpdateProjectile(time, ref projectilePos, targetPos);
+            Vector3 newOrigin = originalPos;
+            Vector3 newPos = projectilePos;
+            EventOnMove?.Invoke(this, preOrigin, prePos, newOrigin, newPos);
+        }
+
+        /// <summary>
+        /// 移动
+        /// </summary>
+        protected void Move()
+        {
+            Vector3 pos = transform.position;
+            Move(Time.fixedTime - mCreateTime, ref mOriginalPos, ref pos, TargetObject.transform.position);
+            transform.position = pos;
+        }
+
+        #endregion 移动
 
         #endregion 通用方法
 
@@ -231,18 +300,7 @@ namespace Trajctory
                 Destroy(gameObject);
                 return;
             }
-            switch (MoveType)
-            {
-                case EnumTrajectoryMoveType.Velocity:
-                    Move_Velocity();
-                    break;
-                case EnumTrajectoryMoveType.SpentTime:
-                    Move_SpentTime();
-                    break;
-                default:
-                    throw new Exception();
-            }
-
+            Move();
         }
 
         #endregion 重写方法
