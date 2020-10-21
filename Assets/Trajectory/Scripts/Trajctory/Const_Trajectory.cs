@@ -2,7 +2,6 @@
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
-using System.Threading.Tasks;
 using UnityEngine;
 
 namespace Trajctory
@@ -59,27 +58,27 @@ namespace Trajctory
         /// <summary>
         /// 默认速度
         /// </summary>
-        public static AnimationCurve DefaultVelocity { get; } = AnimationCurve.Constant(0, 10, 10);
+        public static AnimationCurve DefaultVelocity { private set;  get; }
 
         /// <summary>
         /// 默认耗时
         /// </summary>
-        public static AnimationCurve DefaultTimeSpand { get; } = AnimationCurve.Linear(0, 0, 10, 1);
+        public static AnimationCurve DefaultTimeSpand { private set; get; }
 
         /// <summary>
         /// 默认高度
         /// </summary>
-        public static AnimationCurve DefaultRadius { get; } = AnimationCurve.Constant(0, 10, 0);
+        public static AnimationCurve DefaultRadius { private set; get; }
 
         /// <summary>
         /// 默认轨迹旋转
         /// </summary>
-        public static AnimationCurve DefaultTrajectoryRotation { get; } = AnimationCurve.Constant(0, 10, 0);
+        public static AnimationCurve DefaultTrajectoryRotation { private set; get; }
 
         /// <summary>
         /// 默认投射物自转
         /// </summary>
-        public static AnimationCurve DefaultProjectileRotation { get; } = AnimationCurve.Constant(0, 10, 0);
+        public static AnimationCurve DefaultProjectileRotation { private set; get; }
 
         #endregion 静态属性
 
@@ -98,6 +97,18 @@ namespace Trajctory
         #endregion 属性字段
 
         #region 构造函数
+
+        /// <summary>
+        /// 静态构造函数
+        /// </summary>
+        static Const_Trajectory()
+        {
+            DefaultVelocity = AnimationCurve.Constant(0, 10, 10);
+            DefaultTimeSpand = AnimationCurve.Linear(0, 0, 10, 1);
+            DefaultRadius = AnimationCurve.Constant(0, 10, 0);
+            DefaultTrajectoryRotation = AnimationCurve.Constant(0, 10, 0);
+            DefaultProjectileRotation = AnimationCurve.Constant(0, 10, 0);
+        }
 
         #endregion 构造函数
 

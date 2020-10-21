@@ -3,7 +3,6 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 using UnityEngine;
-using UnityEngine.Experimental.AI;
 
 namespace Trajctory
 {
@@ -68,7 +67,7 @@ namespace Trajctory
 
         #endregion 委托
 
-#endregion 内部声明
+        #endregion 内部声明
 
         #region 属性字段
 
@@ -81,7 +80,7 @@ namespace Trajctory
         /// <summary>
         /// 移动器列表
         /// </summary>
-        public List<Class_TrajectoryMover> ListMover { get; } = new List<Class_TrajectoryMover>();
+        public List<Class_TrajectoryMover> ListMover { private set; get; }
 
         #endregion 属性
 
@@ -213,7 +212,7 @@ namespace Trajctory
             Class_TrajectoryMover mover = projectile.AddComponent<Class_TrajectoryMover>();
             if (LaunchEffect != null)
             {
-                GameObject lanuch = Instantiate(LaunchEffect, transform.position, direction);
+                Instantiate(LaunchEffect, transform.position, direction);
             }
             ListMover.Add(mover);
             mover.CopyFromSimulator(this);
@@ -266,6 +265,14 @@ namespace Trajctory
         }
 
 #endif
+
+        /// <summary>
+        /// 初始化
+        /// </summary>
+        private void Start()
+        {
+            ListMover = new List<Class_TrajectoryMover>();
+        }
 
         /// <summary>
         /// 固定更新

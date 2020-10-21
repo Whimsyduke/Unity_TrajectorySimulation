@@ -2,7 +2,6 @@
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
-using System.Threading.Tasks;
 using UnityEngine;
 
 namespace Trajctory
@@ -29,6 +28,17 @@ namespace Trajctory
         #endregion 定义
 
         #region 委托
+
+        /// <summary>
+        /// 移动事件委托
+        /// </summary>
+        /// <param name="mover">移动器</param>
+        /// <param name="preOriginalPos">前一投影位置</param>
+        /// <param name="prePrejectilePos">前一投射物位置</param>
+        /// <param name="newOriginalPos">新投影位置</param>
+        /// <param name="newPrejectilePos">新投射物位置</param>
+        /// <param name="prejectileRotation">投射物自旋</param>
+        public delegate void FuncMove(Class_TrajectoryMover mover, Vector3 preOriginalPos, Vector3 prePrejectilePos, Vector3 newOriginalPos, Vector3 newPrejectilePos, Quaternion prejectileRotation);
 
         #endregion 委托
 
@@ -147,7 +157,7 @@ namespace Trajctory
         /// <summary>
         /// 移动事件事件，参数分别为移动器，原投影位置，原投射物位置，新投影位置，新投射物位置
         /// </summary>
-        public event Action<Class_TrajectoryMover, Vector3 , Vector3, Vector3, Vector3, Quaternion> EventOnMove;
+        public event FuncMove EventOnMove;
 
         /// <summary>
         /// 超过存在时间事件
@@ -212,7 +222,7 @@ namespace Trajctory
             float time = Time.fixedTime - mCreateTime;
             if (time > LifeTime)
             {
-                EventOnOutOfLifeTime?.Invoke(this);
+                if (EventOnOutOfLifeTime != null) EventOnOutOfLifeTime.Invoke(this);
                 Destroy(gameObject);
                 return;
             }
@@ -221,21 +231,21 @@ namespace Trajctory
             Vector3 targetPos = TargetObject.transform.position;
             Quaternion projectileRotation;
             bool hit = Const_Trajectory.Move(MoveType, VelocityOrTimeSpend, TrajectoryRotation, Radius, ProjectileRotation, time, ref originalPos, ref projectilePos, out projectileRotation, LaunchPos, targetPos, AlwaysFaceTarget, TimeOfLostControl);
-            EventOnMove?.Invoke(this, mOriginalPos, transform.position, originalPos, projectilePos, projectileRotation);
+            if (EventOnMove != null) EventOnMove.Invoke(this, mOriginalPos, transform.position, originalPos, projectilePos, projectileRotation);
             mOriginalPos = originalPos;
             transform.position = projectilePos;
             float angle;
             Vector3 direction;
             projectileRotation.ToAngleAxis(out angle, out direction);
-            transform.rotation = Quaternion.FromToRotation(Vector3.forward, targetPos - LaunchPos) * Quaternion.Euler(0,0,angle);
+            transform.rotation = Quaternion.FromToRotation(Vector3.forward, targetPos - LaunchPos) * Quaternion.Euler(0, 0, angle);
             Debug.Log(transform.rotation.eulerAngles);
             if (hit)
             {
                 if (TargetObject != null)
                 {
-                    GameObject lanuch = Instantiate(ImpactEffect, TargetObject.transform.position, transform.rotation);
+                    Instantiate(ImpactEffect, TargetObject.transform.position, transform.rotation);
                 }
-                EventOnHit?.Invoke(this);
+                if (EventOnHit != null) EventOnHit.Invoke(this);
                 DestroyImmediate(gameObject);
             }
         }
@@ -249,7 +259,7 @@ namespace Trajctory
         /// </summary>
         private void OnDestroy()
         {
-            EventOnDestroy?.Invoke(this);
+            if (EventOnDestroy != null) EventOnDestroy.Invoke(this);
         }
 
         /// <summary>
@@ -264,7 +274,7 @@ namespace Trajctory
             }
             Move();
         }
-         
+
         #endregion 重写方法
 
         #region 事件方法
