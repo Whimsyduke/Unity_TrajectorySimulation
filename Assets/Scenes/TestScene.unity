@@ -38,7 +38,7 @@ RenderSettings:
   m_ReflectionIntensity: 1
   m_CustomReflection: {fileID: 0}
   m_Sun: {fileID: 0}
-  m_IndirectSpecularColor: {r: 0.44657898, g: 0.4964133, b: 0.5748178, a: 1}
+  m_IndirectSpecularColor: {r: 0.44657874, g: 0.49641258, b: 0.5748172, a: 1}
   m_UseRadianceAmbientProbe: 0
 --- !u!157 &3
 LightmapSettings:
@@ -145,7 +145,7 @@ Transform:
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 81134008}
   m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
-  m_LocalPosition: {x: 0, y: 0, z: 10}
+  m_LocalPosition: {x: 8.933613, y: 6.933613, z: 6.933613}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_Children:
   - {fileID: 346060867}
@@ -237,13 +237,13 @@ Transform:
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 91870800}
-  m_LocalRotation: {x: 0.043485317, y: 0.0014985497, z: -0.00006522824, w: 0.999053}
-  m_LocalPosition: {x: -0.092550084, y: 4.757676, z: -10.853449}
+  m_LocalRotation: {x: -0.08052145, y: 0.3812272, z: 0.033353075, w: 0.9203639}
+  m_LocalPosition: {x: -2, y: 0, z: -2}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_Children: []
   m_Father: {fileID: 0}
   m_RootOrder: 0
-  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+  m_LocalEulerAnglesHint: {x: -10, y: 45, z: 0}
 --- !u!1 &321858623
 GameObject:
   m_ObjectHideFlags: 0
@@ -269,7 +269,7 @@ Transform:
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 321858623}
   m_LocalRotation: {x: -0, y: -0, z: -0, w: 1}
-  m_LocalPosition: {x: 0, y: 0, z: 0}
+  m_LocalPosition: {x: 1, y: 1, z: 1}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_Children:
   - {fileID: 1844279572}
@@ -288,28 +288,28 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 35015cc6ec3cc1647b7bbe6a08070301, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  DebugProjectileTime: 1.17
-  MoveType: 1
+  DebugProjectileTime: 6.6
+  MoveType: 0
   VelocityOrTimeSpend:
     serializedVersion: 2
     m_Curve:
     - serializedVersion: 3
       time: 0
-      value: 0
-      inSlope: 0
-      outSlope: 0
-      tangentMode: 0
-      weightedMode: 0
-      inWeight: 0
-      outWeight: 0
-    - serializedVersion: 3
-      time: 5
       value: 1
       inSlope: 0
       outSlope: 0
-      tangentMode: 0
+      tangentMode: 34
       weightedMode: 0
       inWeight: 0
+      outWeight: 0.33333334
+    - serializedVersion: 3
+      time: 10
+      value: 1
+      inSlope: 0
+      outSlope: 0
+      tangentMode: 34
+      weightedMode: 0
+      inWeight: 0.33333334
       outWeight: 0
     m_PreInfinity: 2
     m_PostInfinity: 2
@@ -319,18 +319,18 @@ MonoBehaviour:
     m_Curve:
     - serializedVersion: 3
       time: 0
-      value: 2
-      inSlope: -0.4
-      outSlope: -0.4
+      value: 0
+      inSlope: -0.2
+      outSlope: -0.2
       tangentMode: 34
       weightedMode: 0
       inWeight: 0
       outWeight: 0.33333334
     - serializedVersion: 3
       time: 5
-      value: 0
-      inSlope: -0.4
-      outSlope: -0.4
+      value: -1
+      inSlope: -0.2
+      outSlope: -0.2
       tangentMode: 34
       weightedMode: 0
       inWeight: 0.33333334
@@ -386,6 +386,9 @@ MonoBehaviour:
     m_PreInfinity: 2
     m_PostInfinity: 1
     m_RotationOrder: 4
+  AlwaysFaceTarget: 0
+  LifeTime: 30
+  TimeOfLostControl: 5
   Projectile: {fileID: 2765858893402816530, guid: 17f0bf9a1d6f6864abbf78925eb0f21d,
     type: 3}
   LaunchEffect: {fileID: 2926713815329513677, guid: 1bd02871b876afb4da064d122124cea2,

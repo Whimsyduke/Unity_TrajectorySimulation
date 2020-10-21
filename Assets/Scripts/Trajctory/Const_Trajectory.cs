@@ -81,11 +81,6 @@ namespace Trajctory
         /// </summary>
         public static AnimationCurve DefaultProjectileRotation { get; } = AnimationCurve.Constant(0, 10, 0);
 
-        /// <summary>
-        /// 投射物始终朝向目标
-        /// </summary>
-        public static bool AlwaysFaceTarget { set; get; } = false;
-
         #endregion 静态属性
 
         #region 属性
@@ -160,7 +155,7 @@ namespace Trajctory
         }
 
         /// <summary>
-        /// 刷新投射物位置
+        /// 刷新投射物位置及旋转
         /// </summary>
         /// <param name="trajectoryRotationCurve">轨迹旋转曲线</param>
         /// <param name="radiusCurve">半径曲线</param>
@@ -169,22 +164,38 @@ namespace Trajctory
         /// <param name="originalPos">投影坐标</param>
         /// <param name="launchPos">发射点坐标</param>
         /// <param name="targetPos">目标点坐标</param>
-        public static void Move_UpdateProjectilePosAndRotation(AnimationCurve trajectoryRotationCurve, AnimationCurve radiusCurve, AnimationCurve projectilerRotationCurve, float time, Vector3 originalPos, out Vector3 projectilePos, out Quaternion projectileRotation, Vector3 launchPos, Vector3 targetPos)
+        /// <param name="alwaysFaceTarget">锁定投射物朝向到目标</param>
+        public static void Move_UpdateProjectilePosAndRotation(AnimationCurve trajectoryRotationCurve, AnimationCurve radiusCurve, AnimationCurve projectilerRotationCurve, float time, Vector3 originalPos, out Vector3 projectilePos, out Quaternion projectileRotation, Vector3 launchPos, Vector3 targetPos, bool alwaysFaceTarget)
         {
             Vector3 polarAxis = -Vector3.Cross((targetPos - launchPos), Vector3.up).normalized;
             float radius = radiusCurve.Evaluate(time);
             float angle = trajectoryRotationCurve.Evaluate(time);
-            Quaternion rotation = Quaternion.Euler(0, 0, angle);
+            Quaternion rotation = Quaternion.AngleAxis(angle, targetPos - launchPos);
             Vector3 direction = (rotation * polarAxis).normalized;
             projectilePos = originalPos + direction * radius;
-            angle = projectilerRotationCurve.Evaluate(time);
-            if (AlwaysFaceTarget)
+            projectileRotation = Move_UpdateProjectileRotation(projectilerRotationCurve, time, projectilePos, launchPos,targetPos, alwaysFaceTarget);
+        }
+
+        /// <summary>
+        /// 刷新投射物旋转
+        /// </summary>
+        /// <param name="projectilerRotationCurve">投射物旋转曲线</param>
+        /// <param name="time">移动时间</param>
+        /// <param name="projectilePos">投射物坐标</param>
+        /// <param name="launchPos">发射点坐标</param>
+        /// <param name="targetPos">目标点坐标</param>
+        /// <param name="alwaysFaceTarget">锁定投射物朝向到目标</param>
+        /// <returns>投射物旋转角度</returns>
+        private static Quaternion Move_UpdateProjectileRotation(AnimationCurve projectilerRotationCurve, float time, Vector3 projectilePos, Vector3 launchPos, Vector3 targetPos, bool alwaysFaceTarget)
+        {
+            float angle = projectilerRotationCurve.Evaluate(time);
+            if (alwaysFaceTarget)
             {
-                projectileRotation = Quaternion.AngleAxis(angle, targetPos - projectilePos);
+                return Quaternion.AngleAxis(angle, targetPos - projectilePos);
             }
             else
             {
-                projectileRotation = Quaternion.AngleAxis(angle, targetPos - launchPos);
+                return Quaternion.AngleAxis(angle, targetPos - launchPos);
             }
         }
 
@@ -201,27 +212,42 @@ namespace Trajctory
         /// <param name="projectilePos">投射物坐标</param>
         /// <param name="launchPos">发射点坐标</param>
         /// <param name="targetPos">目标点坐标</param>
-        public static bool Move(EnumTrajectoryMoveType moveType, AnimationCurve velocityOrPosCurve, AnimationCurve trajectoryRotationCurve, AnimationCurve radiusCurve, AnimationCurve projectilerRotationCurve, float time, ref Vector3 originalPos, ref Vector3 projectilePos, out Quaternion projectileRotation, Vector3 launchPos, Vector3 targetPos)
+        /// <param name="alwaysFaceTarget">锁定投射物朝向到目标</param>
+        /// <param name="lostControlTime">失控定时</param>
+        public static bool Move(EnumTrajectoryMoveType moveType, AnimationCurve velocityOrPosCurve, AnimationCurve trajectoryRotationCurve, AnimationCurve radiusCurve, AnimationCurve projectilerRotationCurve, float time, ref Vector3 originalPos, ref Vector3 projectilePos, out Quaternion projectileRotation, Vector3 launchPos, Vector3 targetPos, bool alwaysFaceTarget, float lostControlTime)
         {
             bool hit;
-            switch (moveType)
+            if (moveType == EnumTrajectoryMoveType.SpentTime || lostControlTime < 0 || time <= lostControlTime)
             {
-                case EnumTrajectoryMoveType.Velocity:
-                    hit = Move_Velocity(velocityOrPosCurve, time, ref originalPos, launchPos, targetPos);
-                    break;
-                case EnumTrajectoryMoveType.SpentTime:
-                    hit = Move_SpentTime(velocityOrPosCurve, time, ref originalPos, launchPos, targetPos);
-                    break;
-                default:
-                    throw new Exception();
+                switch (moveType)
+                {
+                    case EnumTrajectoryMoveType.Velocity:
+                        hit = Move_Velocity(velocityOrPosCurve, time, ref originalPos, launchPos, targetPos);
+                        break;
+                    case EnumTrajectoryMoveType.SpentTime:
+                        hit = Move_SpentTime(velocityOrPosCurve, time, ref originalPos, launchPos, targetPos);
+                        break;
+                    default:
+                        throw new Exception();
+                }
+                if (hit)
+                {
+                    projectileRotation = new Quaternion();
+                    return true;
+                }
+                Move_UpdateProjectilePosAndRotation(trajectoryRotationCurve, radiusCurve, projectilerRotationCurve, time, originalPos, out projectilePos, out projectileRotation, launchPos, targetPos, alwaysFaceTarget);
             }
-            if (hit)
+            else
             {
-                projectileRotation = new Quaternion();
-                return true;
+                Vector3 templaunchPos = projectilePos;
+                hit = Move_Velocity(velocityOrPosCurve, time, ref projectilePos, templaunchPos, targetPos);
+                if (hit)
+                {
+                    projectileRotation = new Quaternion();
+                    return true;
+                }
+                projectileRotation = Move_UpdateProjectileRotation(projectilerRotationCurve, time, projectilePos, launchPos, targetPos, alwaysFaceTarget);
             }
-            Move_UpdateProjectilePosAndRotation(trajectoryRotationCurve, radiusCurve, projectilerRotationCurve, time, originalPos, out projectilePos, out projectileRotation, launchPos, targetPos);
-
             return false;
         }
 

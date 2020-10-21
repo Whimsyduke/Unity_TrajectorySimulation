@@ -79,6 +79,24 @@ namespace Trajctory
         public AnimationCurve ProjectileRotation;
 
         /// <summary>
+        /// 锁定投射物朝向到目标
+        /// </summary>
+        [Tooltip("True投射物始终面向目标，False，投射物朝向始终平行发射点到目标单位所在位置的直线上")]
+        public bool AlwaysFaceTarget = false;
+
+        /// <summary>
+        /// 投射物最大存在时间
+        /// </summary>
+        [Tooltip("投射物最大寿命")]
+        public float LifeTime = 30;
+
+        /// <summary>
+        /// 失控定时
+        /// </summary>
+        [Tooltip("超过时间后，投射物仅受速度或耗时影响，直线飞向目标对象，负数代表永远不失控。。恒定耗时模式下无效")]
+        public float TimeOfLostControl = -1;
+
+        /// <summary>
         /// 轰击特效
         /// </summary>
         [Tooltip("轰击特效Prefab")]
@@ -111,6 +129,7 @@ namespace Trajctory
         private Vector3 mOriginalPos;
 
         #endregion 私有字段
+
         #endregion 字段
 
         #region 事件
@@ -129,6 +148,11 @@ namespace Trajctory
         /// 移动事件事件，参数分别为移动器，原投影位置，原投射物位置，新投影位置，新投射物位置
         /// </summary>
         public event Action<Class_TrajectoryMover, Vector3 , Vector3, Vector3, Vector3, Quaternion> EventOnMove;
+
+        /// <summary>
+        /// 超过存在时间事件
+        /// </summary>
+        public event Action<Class_TrajectoryMover> EventOnOutOfLifeTime;
 
         #endregion 事件
 
@@ -172,6 +196,9 @@ namespace Trajctory
             ProjectileRotation = simulator.ProjectileRotation != null ? simulator.ProjectileRotation : Const_Trajectory.DefaultProjectileRotation;
             ImpactEffect = simulator.ImpactEffect;
             TargetObject = simulator.TargetObject;
+            AlwaysFaceTarget = simulator.AlwaysFaceTarget;
+            LifeTime = simulator.LifeTime;
+            TimeOfLostControl = simulator.TimeOfLostControl;
             LaunchPos = simulator.transform.position;
             mOriginalPos = LaunchPos;
             mCreateTime = Time.fixedTime;
@@ -182,17 +209,32 @@ namespace Trajctory
         /// </summary>
         protected void Move()
         {
+            float time = Time.fixedTime - mCreateTime;
+            if (time > LifeTime)
+            {
+                EventOnOutOfLifeTime?.Invoke(this);
+                Destroy(gameObject);
+                return;
+            }
             Vector3 originalPos = mOriginalPos;
-            Vector3 projectilePos= transform.position;
+            Vector3 projectilePos = transform.position;
+            Vector3 targetPos = TargetObject.transform.position;
             Quaternion projectileRotation;
-            bool hit = Const_Trajectory.Move(MoveType, VelocityOrTimeSpend, TrajectoryRotation, Radius, ProjectileRotation, Time.fixedTime - mCreateTime, ref originalPos, ref projectilePos, out projectileRotation, LaunchPos, TargetObject.transform.position);
+            bool hit = Const_Trajectory.Move(MoveType, VelocityOrTimeSpend, TrajectoryRotation, Radius, ProjectileRotation, time, ref originalPos, ref projectilePos, out projectileRotation, LaunchPos, targetPos, AlwaysFaceTarget, TimeOfLostControl);
             EventOnMove?.Invoke(this, mOriginalPos, transform.position, originalPos, projectilePos, projectileRotation);
             mOriginalPos = originalPos;
             transform.position = projectilePos;
-            transform.rotation = projectileRotation;
-            Debug.Log(originalPos);
+            float angle;
+            Vector3 direction;
+            projectileRotation.ToAngleAxis(out angle, out direction);
+            transform.rotation = Quaternion.FromToRotation(Vector3.forward, targetPos - LaunchPos) * Quaternion.Euler(0,0,angle);
+            Debug.Log(transform.rotation.eulerAngles);
             if (hit)
             {
+                if (TargetObject != null)
+                {
+                    GameObject lanuch = Instantiate(ImpactEffect, TargetObject.transform.position, transform.rotation);
+                }
                 EventOnHit?.Invoke(this);
                 DestroyImmediate(gameObject);
             }
@@ -222,7 +264,7 @@ namespace Trajctory
             }
             Move();
         }
-
+         
         #endregion 重写方法
 
         #region 事件方法

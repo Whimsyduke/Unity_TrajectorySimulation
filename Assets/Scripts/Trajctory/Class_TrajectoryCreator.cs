@@ -126,6 +126,24 @@ namespace Trajctory
         public AnimationCurve ProjectileRotation = Const_Trajectory.DefaultProjectileRotation;
 
         /// <summary>
+        /// 锁定投射物朝向到目标
+        /// </summary>
+        [Tooltip("True投射物始终面向目标，False，投射物朝向始终平行发射点到目标单位所在位置的直线上")]
+        public bool AlwaysFaceTarget = false;
+
+        /// <summary>
+        /// 投射物最大存在时间
+        /// </summary>
+        [Tooltip("投射物最大寿命")]
+        public float LifeTime = 30;
+
+        /// <summary>
+        /// 失控定时
+        /// </summary>
+        [Tooltip("超过时间后，投射物仅受速度或耗时影响，直线飞向目标对象，负数代表永远不失控。恒定耗时模式下无效")]
+        public float TimeOfLostControl = -1;
+
+        /// <summary>
         /// 投射物
         /// </summary>
         [Tooltip("投射物Prefab")]
@@ -183,14 +201,6 @@ namespace Trajctory
             }
         }
 
-        private void OnEventHit(Class_TrajectoryMover obj)
-        {
-            if (TargetObject != null)
-            {
-                GameObject lanuch = Instantiate(ImpactEffect, TargetObject.transform.position, transform.rotation);
-            }
-        }
-
         /// <summary>
         /// 发射
         /// </summary>
@@ -198,20 +208,16 @@ namespace Trajctory
         public void Launch(GameObject target)
         {
             if (TargetObject != target) TargetObject = target;
-            GameObject projectile = Instantiate(Projectile);
+            Quaternion direction = Quaternion.LookRotation(TargetObject.transform.position - transform.position);
+            GameObject projectile = Instantiate(Projectile, transform.position, direction);
             Class_TrajectoryMover mover = projectile.AddComponent<Class_TrajectoryMover>();
             if (LaunchEffect != null)
             {
-                GameObject lanuch = Instantiate(LaunchEffect, transform.position, transform.rotation);
+                GameObject lanuch = Instantiate(LaunchEffect, transform.position, direction);
             }
             ListMover.Add(mover);
             mover.CopyFromSimulator(this);
             mover.EventOnDestroy += OnEventDesotroy;
-            if (ImpactEffect != null)
-            {
-                mover.EventOnHit += OnEventHit;
-            }
-            Debug.Log("发射");
         }
 
         #endregion 通用方法
@@ -230,30 +236,32 @@ namespace Trajctory
             Vector3 newOriginalPos = transform.position;
             Vector3 newProjectilePos;
             Quaternion projectileRotation;
-            Const_Trajectory.Move_UpdateProjectilePosAndRotation(TrajectoryRotation, Radius, ProjectileRotation, time, newOriginalPos, out newProjectilePos, out projectileRotation, newOriginalPos, targetPos);
+            Const_Trajectory.Move_UpdateProjectilePosAndRotation(TrajectoryRotation, Radius, ProjectileRotation, time, newOriginalPos, out newProjectilePos, out projectileRotation, newOriginalPos, targetPos, AlwaysFaceTarget);
             Vector3 preOriginalPos = newOriginalPos;
             Vector3 preProjectilePos = newProjectilePos;
             bool hit = false;
             while (!hit)
             {
-                hit = Const_Trajectory.Move(MoveType, VelocityOrTimeSpend, TrajectoryRotation, Radius, ProjectileRotation, time, ref newOriginalPos, ref newProjectilePos, out projectileRotation, transform.position, targetPos);
-                Gizmos.color = Color.yellow;
-                Gizmos.DrawLine(preOriginalPos,newOriginalPos);
-                Gizmos.color = Color.red;
-                Gizmos.DrawLine(preProjectilePos, newProjectilePos);
                 float debugInterval = time - DebugProjectileTime;
                 if (debugInterval <= 0 && Mathf.Abs(time - DebugProjectileTime) < Time.fixedDeltaTime)
                 {
                     Gizmos.color = Color.green;
                     Gizmos.DrawSphere(newProjectilePos, 0.5f);
-                    Vector3 showDirect = (projectileRotation * Vector3.right).normalized * 1;
+                    Vector3 polarAxis = -Vector3.Cross((targetPos - transform.position), Vector3.up).normalized;
+                    Vector3 showDirect = (projectileRotation * polarAxis).normalized * 1;
                     Gizmos.DrawLine(newProjectilePos, newProjectilePos + showDirect);
                 }
+
+                hit = Const_Trajectory.Move(MoveType, VelocityOrTimeSpend, TrajectoryRotation, Radius, ProjectileRotation, time, ref newOriginalPos, ref newProjectilePos, out projectileRotation, transform.position, targetPos, AlwaysFaceTarget, TimeOfLostControl);
+                Gizmos.color = Color.yellow;
+                Gizmos.DrawLine(preOriginalPos,newOriginalPos);
+                Gizmos.color = Color.red;
+                Gizmos.DrawLine(preProjectilePos, newProjectilePos);
 
                 time += Time.fixedDeltaTime;
                 preOriginalPos = newOriginalPos;
                 preProjectilePos = newProjectilePos;
-                if (time > Const_MaxShowDebugTime) break;
+                if (time > LifeTime) break;
             }
         }
 
