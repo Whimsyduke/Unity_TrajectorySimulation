@@ -81,6 +81,11 @@ namespace Trajctory
         /// </summary>
         public static AnimationCurve DefaultProjectileRotation { get; } = AnimationCurve.Constant(0, 10, 0);
 
+        /// <summary>
+        /// 投射物始终朝向目标
+        /// </summary>
+        public static bool AlwaysFaceTarget { set; get; } = false;
+
         #endregion 静态属性
 
         #region 属性
@@ -120,13 +125,13 @@ namespace Trajctory
         {
             float speedVal = velocityCurve.Evaluate(time) * Time.fixedDeltaTime;
             Vector3 velocity = (targetPos - launchPos).normalized * speedVal;
-            if ((targetPos - originalPos).sqrMagnitude <= velocity.sqrMagnitude)
+            originalPos += velocity;
+            if ((targetPos - launchPos).sqrMagnitude <= (originalPos - launchPos).sqrMagnitude)
             {
                 return true;
             }
             else
             {
-                originalPos = originalPos + velocity;
                 return false;
             }
         }
@@ -143,7 +148,7 @@ namespace Trajctory
         private static bool Move_SpentTime(AnimationCurve positionCurve, float time, ref Vector3 originalPos, Vector3 launchPos, Vector3 targetPos)
         {
             float posVal = positionCurve.Evaluate(time);
-            if (posVal > 1)
+            if (posVal >= 1)
             {
                 return true;
             }
@@ -173,7 +178,14 @@ namespace Trajctory
             Vector3 direction = (rotation * polarAxis).normalized;
             projectilePos = originalPos + direction * radius;
             angle = projectilerRotationCurve.Evaluate(time);
-            projectileRotation = Quaternion.AngleAxis(angle, targetPos - projectilePos);
+            if (AlwaysFaceTarget)
+            {
+                projectileRotation = Quaternion.AngleAxis(angle, targetPos - projectilePos);
+            }
+            else
+            {
+                projectileRotation = Quaternion.AngleAxis(angle, targetPos - launchPos);
+            }
         }
 
         /// <summary>

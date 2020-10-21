@@ -82,7 +82,7 @@ namespace Trajctory
         /// 轰击特效
         /// </summary>
         [Tooltip("轰击特效Prefab")]
-        public GameObject ImpaceEffect;
+        public GameObject ImpactEffect;
 
         /// <summary>
         /// 目标对象
@@ -170,7 +170,7 @@ namespace Trajctory
             Radius = simulator.Radius != null ? simulator.Radius : Const_Trajectory.DefaultRadius;
             TrajectoryRotation = simulator.TrajectoryRotation != null ? simulator.TrajectoryRotation : Const_Trajectory.DefaultTrajectoryRotation;
             ProjectileRotation = simulator.ProjectileRotation != null ? simulator.ProjectileRotation : Const_Trajectory.DefaultProjectileRotation;
-            ImpaceEffect = simulator.ImpaceEffect;
+            ImpactEffect = simulator.ImpactEffect;
             TargetObject = simulator.TargetObject;
             LaunchPos = simulator.transform.position;
             mOriginalPos = LaunchPos;
@@ -185,18 +185,16 @@ namespace Trajctory
             Vector3 originalPos = mOriginalPos;
             Vector3 projectilePos= transform.position;
             Quaternion projectileRotation;
-            bool hit = Const_Trajectory.Move(MoveType, VelocityOrTimeSpend, TrajectoryRotation, Radius, ProjectileRotation, Time.fixedTime - mCreateTime, ref originalPos, ref projectilePos, out projectileRotation, transform.position, TargetObject.transform.position);
+            bool hit = Const_Trajectory.Move(MoveType, VelocityOrTimeSpend, TrajectoryRotation, Radius, ProjectileRotation, Time.fixedTime - mCreateTime, ref originalPos, ref projectilePos, out projectileRotation, LaunchPos, TargetObject.transform.position);
+            EventOnMove?.Invoke(this, mOriginalPos, transform.position, originalPos, projectilePos, projectileRotation);
+            mOriginalPos = originalPos;
+            transform.position = projectilePos;
+            transform.rotation = projectileRotation;
+            Debug.Log(originalPos);
             if (hit)
             {
                 EventOnHit?.Invoke(this);
-                Destroy(gameObject);
-            }
-            else
-            {
-                EventOnMove?.Invoke(this, mOriginalPos, transform.position, originalPos, projectilePos, projectileRotation);
-                mOriginalPos = originalPos;
-                transform.position = projectilePos;
-                transform.rotation = projectileRotation;
+                DestroyImmediate(gameObject);
             }
         }
 

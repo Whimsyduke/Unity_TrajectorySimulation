@@ -141,7 +141,7 @@ namespace Trajctory
         /// 轰击特效
         /// </summary>
         [Tooltip("轰击特效Prefab")]
-        public GameObject ImpaceEffect;
+        public GameObject ImpactEffect;
 
         /// <summary>
         /// 目标对象
@@ -175,11 +175,19 @@ namespace Trajctory
         /// 移动器销毁
         /// </summary>
         /// <param name="mover">移动器</param>
-        public void OnMoverDesotroy(Class_TrajectoryMover mover)
+        public void OnEventDesotroy(Class_TrajectoryMover mover)
         {
             if (ListMover.Contains(mover))
             {
                 ListMover.Remove(mover);
+            }
+        }
+
+        private void OnEventHit(Class_TrajectoryMover obj)
+        {
+            if (TargetObject != null)
+            {
+                GameObject lanuch = Instantiate(ImpactEffect, TargetObject.transform.position, transform.rotation);
             }
         }
 
@@ -192,15 +200,23 @@ namespace Trajctory
             if (TargetObject != target) TargetObject = target;
             GameObject projectile = Instantiate(Projectile);
             Class_TrajectoryMover mover = projectile.AddComponent<Class_TrajectoryMover>();
+            if (LaunchEffect != null)
+            {
+                GameObject lanuch = Instantiate(LaunchEffect, transform.position, transform.rotation);
+            }
             ListMover.Add(mover);
             mover.CopyFromSimulator(this);
-            mover.EventOnDestroy += OnMoverDesotroy;            
+            mover.EventOnDestroy += OnEventDesotroy;
+            if (ImpactEffect != null)
+            {
+                mover.EventOnHit += OnEventHit;
+            }
+            Debug.Log("发射");
         }
 
         #endregion 通用方法
 
         #region 重写方法
-
 
 #if UNITY_EDITOR
 
@@ -242,6 +258,18 @@ namespace Trajctory
         }
 
 #endif
+
+        /// <summary>
+        /// 固定更新
+        /// </summary>
+        private void Update()
+        {
+            if (TargetObject == null) return;
+            if (Input.GetKeyDown(KeyCode.Space))
+            {
+                Launch(TargetObject);
+            }
+        }
 
         #endregion 重写方法
 
