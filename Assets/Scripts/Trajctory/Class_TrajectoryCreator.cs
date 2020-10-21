@@ -39,16 +39,20 @@ namespace Trajctory
 
     #endregion 公共声明
 
-    #region 弹道模拟附件
+    #region 弹道创建附件
 
     /// <summary>
-    /// 弹道模拟附件
+    /// 弹道创建附件
     /// </summary>
     public class Class_TrajectoryCreator : MonoBehaviour
     {
         #region 内部声明
 
         #region 常量
+
+#if UNITY_EDITOR
+        private const float Const_MaxShowDebugTime = 10f;
+#endif
 
         #endregion 常量
 
@@ -64,36 +68,11 @@ namespace Trajctory
 
         #endregion 委托
 
-        #endregion 内部声明
+#endregion 内部声明
 
         #region 属性字段
 
         #region 静态属性
-
-        /// <summary>
-        /// 默认速度
-        /// </summary>
-        public static AnimationCurve DefaultVelocity { get; } = AnimationCurve.Constant(0, 10, 10);
-
-        /// <summary>
-        /// 默认耗时
-        /// </summary>
-        public static AnimationCurve DefaultTimeSpand { get; } = AnimationCurve.Linear(0, 0, 10, 1);
-
-        /// <summary>
-        /// 默认高度
-        /// </summary>
-        public static AnimationCurve DefaultHeight { get; } = AnimationCurve.Constant(0, 10, 0);
-
-        /// <summary>
-        /// 默认轨迹旋转
-        /// </summary>
-        public static AnimationCurve DefaultTrackRotation { get; } = AnimationCurve.Constant(0, 10, 0);
-
-        /// <summary>
-        /// 默认投射物自转
-        /// </summary>
-        public static AnimationCurve DefaultProjectileRotation { get; } = AnimationCurve.Constant(0, 10, 0);
 
         #endregion 静态属性
 
@@ -108,6 +87,14 @@ namespace Trajctory
 
         #region 字段
 
+        #region 公共字段
+
+#if UNITY_EDITOR
+
+        [Header("调试设置"), Tooltip("用于显示投射物在某时刻所在位置及自转朝向")]
+        public float DebugProjectileTime = 0;
+
+#endif
         /// <summary>
         /// 移动类型
         /// </summary>
@@ -118,25 +105,25 @@ namespace Trajctory
         /// 速度
         /// </summary>
         [Header("轨迹配置"), Tooltip("移动速度曲线或时间消耗曲线。如果Move Type配置为Constant Velocity，则曲线X轴代表时间点，Y轴代表此时间点投射物的速度；如果配置为Constant Time，那么曲线代表时间点，Y轴代表投射物移动距离的比例，当y大于等于1时即为命中目标。")]
-        public AnimationCurve VelocityOrTimeSpend = DefaultVelocity;
+        public AnimationCurve VelocityOrTimeSpend = Const_Trajectory.DefaultVelocity;
 
         /// <summary>
         /// 半径曲线
         /// </summary>
         [Tooltip("投射物偏离发射点到目标点的直线垂直距离，若投射物所在的极坐标平面垂直于此直线，且直线经过坐标原点，那么配置数据X轴代表时间，Y轴代表投射物在坐标平面上的点到极坐标平面原点的半径r")]
-        public AnimationCurve Radius;
+        public AnimationCurve Radius = Const_Trajectory.DefaultRadius;
 
         /// <summary>
         /// 轨迹旋转曲线
         /// </summary>
         [Tooltip("投射物偏离发射点到目标点的直线垂线的旋转角度，若投射物所在的极坐标平面垂直于此直线，且直线经过坐标原点，那么配置数据X轴代表时间，Y轴代表投射物在坐标平面上的点的旋转就角度γ。极坐标0度永远平行于世界坐标的XZ平面。")]
-        public AnimationCurve TrackRotation = DefaultTrackRotation;
+        public AnimationCurve TrajectoryRotation = Const_Trajectory.DefaultTrajectoryRotation;
 
         /// <summary>
         /// 投射物自转曲线
         /// </summary>
         [Tooltip("投射物自身的旋转角度，投射物的朝向永远面向目标点，旋转0度角永远平行于世界坐标的XZ平面。")]
-        public AnimationCurve ProjectileRotation = DefaultProjectileRotation;
+        public AnimationCurve ProjectileRotation = Const_Trajectory.DefaultProjectileRotation;
 
         /// <summary>
         /// 投射物
@@ -161,6 +148,12 @@ namespace Trajctory
         /// </summary>
         [Tooltip("目标对象")]
         public GameObject TargetObject;
+
+        #endregion 公共字段
+
+        #region 私有字段
+
+        #endregion 私有字段
 
         #endregion 字段
 
@@ -201,11 +194,54 @@ namespace Trajctory
             Class_TrajectoryMover mover = projectile.AddComponent<Class_TrajectoryMover>();
             ListMover.Add(mover);
             mover.CopyFromSimulator(this);
+            mover.EventOnDestroy += OnMoverDesotroy;            
         }
 
         #endregion 通用方法
 
         #region 重写方法
+
+
+#if UNITY_EDITOR
+
+        /// <summary>
+        /// 选择渲染
+        /// </summary>
+        private void OnDrawGizmosSelected()
+        {
+            float time = 0f;
+            Vector3 targetPos = TargetObject == null ? transform.forward.normalized * 10 + transform.position : TargetObject.transform.position;
+            Vector3 newOriginalPos = transform.position;
+            Vector3 newProjectilePos;
+            Quaternion projectileRotation;
+            Const_Trajectory.Move_UpdateProjectilePosAndRotation(TrajectoryRotation, Radius, ProjectileRotation, time, newOriginalPos, out newProjectilePos, out projectileRotation, newOriginalPos, targetPos);
+            Vector3 preOriginalPos = newOriginalPos;
+            Vector3 preProjectilePos = newProjectilePos;
+            bool hit = false;
+            while (!hit)
+            {
+                hit = Const_Trajectory.Move(MoveType, VelocityOrTimeSpend, TrajectoryRotation, Radius, ProjectileRotation, time, ref newOriginalPos, ref newProjectilePos, out projectileRotation, transform.position, targetPos);
+                Gizmos.color = Color.yellow;
+                Gizmos.DrawLine(preOriginalPos,newOriginalPos);
+                Gizmos.color = Color.red;
+                Gizmos.DrawLine(preProjectilePos, newProjectilePos);
+                float debugInterval = time - DebugProjectileTime;
+                if (debugInterval <= 0 && Mathf.Abs(time - DebugProjectileTime) < Time.fixedDeltaTime)
+                {
+                    Gizmos.color = Color.green;
+                    Gizmos.DrawSphere(newProjectilePos, 0.5f);
+                    Vector3 showDirect = (projectileRotation * Vector3.right).normalized * 1;
+                    Gizmos.DrawLine(newProjectilePos, newProjectilePos + showDirect);
+                }
+
+                time += Time.fixedDeltaTime;
+                preOriginalPos = newOriginalPos;
+                preProjectilePos = newProjectilePos;
+                if (time > Const_MaxShowDebugTime) break;
+            }
+        }
+
+#endif
 
         #endregion 重写方法
 
@@ -216,5 +252,5 @@ namespace Trajctory
         #endregion 方法
     }
 
-    #endregion 弹道模拟附件
+    #endregion 弹道创建附件
 }
